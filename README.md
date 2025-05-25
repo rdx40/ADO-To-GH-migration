@@ -35,7 +35,7 @@ export ADO_PAT=MY_ADO_PAT
 python migrate_prs.py --ado-org myorg --ado-project myproject --ado-repo myrepo --github-repo myuser/mygithubrepo
 ```
 
-- ## What the script does :
+- What the script does :
   - Connect to Azure DevOps using the PAT (Personal Access Token) to authenticate via REST API.
   - Hits the endpoint: https://dev.azure.com/{org}/{project}/_apis/git/repositories/{repoId}/pullrequests
   - Fetch PR Metadata : Title, Description, Source branch, Target Branch
@@ -47,6 +47,23 @@ python migrate_prs.py --ado-org myorg --ado-project myproject --ado-repo myrepo 
   -GH reviews and approvals(security reasons)
   -Attachments (are usually blobs hosted by ado and linked to prs or comments. GH does not support uploading attachments via PR API)
 
-## 3. To Follow Security Practises
+## 3. Migrating ADO pipelines to GH action pipelines
+
+- Hasnt been automated yet but for now
+- Either :
+  - Refer to the following github project: [ADO-Pipeline-Yml-To-Github-Actions-Yml](https://github.com/rdx40/ADO-Pipeline-Yml-To-Github-Actions-Yml.git) A WebAPI that takes a ado pipeline as input and returns a github actions yaml as output
+- OR Use the original project it was based on :
+  - https://pipelinestoactions.azurewebsites.net/
+
+## 4. Migrating Work Items(Issues, Tasks, Bugs)
+
+- Although there does exist a powershell script for the same objective [This one](https://github.com/joshjohanning/ado_workitems_to_github_issues)
+- Personally Using a python script for such tasks has always been my go to. So you could execute the following script [migrate_workitems.py](./migrate_workitems.py) as so
+
+```bash
+python migrate_workitems.py --ado-org <ORG_NAME> --ado-project <PROJECT_NAME> --github-repo <user/repo_name> --ado-pat <ADO_PAT_HERE> --github-token <GH_TOKEN_HERE>
+```
+
+## 5. To Follow Security Practises
 
 - Please do refer to [Security_Practises.txt](./Security_Practises.txt)
