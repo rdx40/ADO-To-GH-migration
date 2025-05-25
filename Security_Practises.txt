@@ -1,0 +1,93 @@
+Permissions and Access Control(Globally, i.e. for all repos)
+Now for access type permission 
+for a GH Organization 
+Head to Upper Right Account Symbol  Your Organization Organization Roles  Role Assignment  Here a team/users can be assigned with different permissions. To list them out,
+All-repository read (RO access to all repos in org)
+All-repository write (Write access to all repos in org)
+All-repository triage (Triage (individuals who need to proactively manage the backlog of tasks without directly altering the codebase) access to all repos in org) (manage and organize issues, pull requests, and discussions within a repository, without the need to make code changes)
+All-repository maintain (Maintain access to all repos in organization)
+All-repository admin (Grants admin access to all repositories in the organization)
+CI/CD Admin (Grants admin access to manage Actions policies, runners, runner groups, network configurations, secrets, variables, and usage metrics for an organization.)
+Security Manager (Manage security policies)
+
+
+
+
+
+
+
+
+
+Permissions and Access Control(For repositories, Repository Roles)
+ 
+These are of two types  Pre-defined and custom
+Pre-Defined :
+•	Read (Read and clone repositories. Open and comment on issues and pull requests.)
+•	Triage(Read + Manage Issues and Pull Requests)
+•	Write (Triage + read, clone and push to repositories.)
+•	Maintain(Write + Manage issues , pull requests and some repo settings)
+•	Admin(full access to all repos including sensitive and destructive actions.)
+Custom Roles:
+•	Enterprise accounts offer organizations more granular control over permissions by allowing you to configure up to five custom repository roles.
+•	This enables greater control over who and how your users access code and data in your organization.
+Security Handling
+Member Privileges:
+•	Set base privilege as no permission (only public repos can be cloned and pulled. For some member to perform additional access operations he would have to be part of an authorized team or be made a collaborator on the individual repos)
+•	Maintains Security
+•	Set repo creation to private (i.e., Members will be able to create private repositories, visible to organization members with permission.)
+•	Disable forking of forking of private repos to maintain the security aspect.
+•	Set the “Projects base permissions” to No access (Projects created by members are not visible unless they belong to the team with the permissions to do so.)
+•	Disable “Integration Access Requests” from outside collaborators (i.e., Outside collaborators will be able to request access for GitHub or OAuth apps to access this organization and its resources.
+Admin Privileges:
+•	Repository Visibility Change (What this does is , IF SET, gives the admin permission for the repo will be able to change its visibility from private to public.
+If NOT SET, only organization owners can change the visibility of the repos.
+Considering how the workflow occurs, I reckon this setting should not be set, as most projects of the enterprise occur in private repos and hardly ever require a public visibility.)
+•	Repository delete and transfer (If enabled, members with admin permissions for the repository will be able to delete or transfer public and private repositories. If disabled, only organization owners can delete or transfer repositories). Again, my take is to disable it in order to get rid of the security issue.
+•	Issue deletion (Allow repository administrators to delete issues for this organization). My take is to not enable it as in the case the issue is erroneous or is not being resolved the issue creator can delete it?
+•	Member team permissions need not be set as the admin takes care of that and it could lead to confusions and multiple redundant teams for a task. Also, not all members have permissions thereby they could not assign certain permissions.
+Interaction Limits during a cool down period(Temporary Interaction Limits):
+•	Limit to existing users (Users that have recently created their account will be unable to interact with this organization's repositories.) Should stay enabled  
+•	Limit to prior contributors (Users that have not previously committed to the default branch of a repository in this organization will be unable to interact with that repository.)
+•	Limit to repo collaborators (Users that are not collaborators of a repository in this organization will not be able to interact with that repository.)
+
+All three of the above could be optional as they come into play only in the case of a forced cool off time during heated discussions or in order prevent unwanted interactions.
+
+Code review limits
+	Upto the admin
+Now for the branch protection rules(Repository>Rulesets):
+	Rulesets can either be created for branches specifically or can be imported via json file from the ado making use of the api(https://learn.microsoft.com/en-us/rest/api/azure/devops/policy/configurations/list?view=azure-devops-rest-7.1&tabs=HTTP) 
+I)	Now in the case of manual creation of rulesets
+ 
+The rules can be set as per requirement/ as per as was set on ADO after thoroughly going through the policies on the repos on it.
+
+We can start of by enforcing the branch ruleset
+Exempt maybe only the admin user by adding them to the bypass list and anyone else as seen fit
+We can set the target repos for which the ruleset has to be applied (Either all repos globally(Not recommended as each repo will have a different ruleset), Repos based on name(Recommended as each repo is targeted and the rules are set specifically), Repos based on property(Could be done in the case where all repos follow a similar modus operandi), Select repositories (Also works as multiple repos with a similar structure could be targeted in this case))
+Next we select our target branches determining which branched will be protected by the ruleset.
+
+Next we choose the rules that are to be applied on the branch
+ 
+refs here refers to the protected branch or tag
+
+
+
+
+Under the planning/Projects:
+Let it stay as is 
+ 
+As the defaults allow project creation but do not allow the member even admin to change the project visibility . Only the organization owners can change it
+
+Under Security>Authentication Security:
+Require 2FA for everyone in the organization to enhance security.
+
+In Security>Advanced Security>Configurations:
+If the organization has purchased GitHub Advanced Security,
+Certain security features like secret scanning and code scanning can be enabled.(Although free for public repos, not applicable for current use case)
+
+In Security>Advanced Security>Global settings:
+Enable and disable features as per security protocols of the organization.
+
+In Security>Deploy Keys:
+Enabling the deploy keys would be secure as only the ssh configs of the team members would have to be added onto githubs ssh/gpg keys
+Secrets and Variables:
+<To Fill in>
