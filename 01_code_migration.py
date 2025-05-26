@@ -29,7 +29,6 @@ def main():
     # Push the mirror to the new GitHub repo, ignore errors
     run(f'git push --mirror "{args.github_repo_url}"', ignore_error=True)
 
-
     # Set the default branch to 'main' on GitHub using GitHub CLI
     # Extract owner/repo from the GitHub URL
     m = re.search(r'github\.com[:/](.+?)/(.+?)\.git', args.github_repo_url)

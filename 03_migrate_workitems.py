@@ -66,7 +66,7 @@ while True:
 for wi_id in ids:
     try:
         # Get work item details
-        url = f"https://dev.azure.com/{args.ado_org}/{args.ado_project}/_apis/wit/workitems/{wi_id}?$expand=all&api-version=7.0"
+        url = f"https://dev.azure.com/{args.ado_org}/{args.ado_project}/_apis/wit/workitems/{wi_id}?$expand=all&api-version=7.0-preview"
         wi = requests.get(url, headers=headers_ado).json()
         title = wi["fields"]["System.Title"]
         if title in existing_titles:
@@ -99,7 +99,7 @@ for wi_id in ids:
         print(f"✅ Created GitHub issue #{issue_number}: {title}")
 
         # Fetch and migrate comments
-        comments_url = f"https://dev.azure.com/{args.ado_org}/{args.ado_project}/_apis/wit/workItems/{wi_id}/comments?api-version=7.0"
+        comments_url = f"https://dev.azure.com/{args.ado_org}/{args.ado_project}/_apis/wit/workItems/{wi_id}/comments?api-version=7.0-preview"
         comment_resp = requests.get(comments_url, headers=headers_ado)
         comment_resp.raise_for_status()
         for comment in comment_resp.json().get("comments", []):
@@ -114,3 +114,7 @@ for wi_id in ids:
 
 log_file.close()
 print("\n🎉 Migration complete.")
+
+
+
+#python.exe .\migrate_workitems.py --ado-pat <ADO_PAT_HERE> --ado-org <ADO_ORG_HERE> --ado-project <ADO_PROJECT_HERE> --github-repo <Github_USER/Github_REPO> --github-token <GH_PAT_HERE>

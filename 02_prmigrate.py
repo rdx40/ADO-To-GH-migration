@@ -133,3 +133,8 @@ for pr in prs:
 
 log_file.close()
 print("\n✅ Migration complete. Check 'migration_errors.log' for any issues.")
+
+
+
+
+# python.exe .\prmigrate.py --ado-pat <ADO_PAT_HERE> --ado-org <ADO_ORG_HERE> --ado-project <ADO_PROJECT_HERE> --ado-repo <ADO_REPO_HERE> --github-repo <Github_User/Github_Repo>
