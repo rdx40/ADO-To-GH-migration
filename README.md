@@ -1,7 +1,8 @@
 # Migration of Repositories from ADO to GitHub Enterprises
 
 ## Code Migration
-- CREATE A NEW REPO ON GITHUB 
+- CREATE A NEW REPO ON GITHUB
+- Set up a bare mirror clone of ado repository
 eg.
 ```bash
 git clone --mirror git@ssh.dev.azure.com:v3/ivanjmadathil/django-admin-jwt-test/django-admin-jwt-test
