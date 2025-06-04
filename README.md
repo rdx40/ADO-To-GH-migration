@@ -329,3 +329,25 @@ for wi_id in ids:
 log_file.close()
 print("\n🎉 Migration complete.")
 ```
+
+## Branch Protection, Restriction Rules
+- These have to be done manually and based on the workflow of the repository
+- Enable branch protection to effectively prevent force pushing
+- Enable on any branch meant for ongoing collabration
+- By default, all collaborators who have been granted write permissions to the repository are able to push to the protected branch. By explicitly specifying permitted collaborators, you will narrow down the list of existing collaborators who can push to the branch.
+- Create a "Maintainers" teams.
+- Enable branch protection on main branch by turning on "Require status checks to pass before merging" to avoid broken code.
+- Require at least one pull request review by checking the "Require pull request reviews before merging"
+
+
+## Secrets and Pipelines
+- For the migration of secrets and pipelines from azure devops to github
+- Firstly, Secrets cannot be migrated and will have to be set in the repository settings in github.
+- Secondly, for the conversion of Azure pipelines yaml to github compliant yaml [The following website could be used](https://pipelinestoactions.azurewebsites.net/). Or its NuGet package could be utilized.
+- NOTE: For the pipeline conversion the tool only promises a 90% conversion accuracy at best. So a pipeline review would be required.
+
+## Wikis
+- Would have to be migrated manually
+
+## Azure Artifacts to GitHub Packages
+
