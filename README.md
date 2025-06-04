@@ -1,69 +1,331 @@
-ps: assuming you have pat tokens for both ado and gh, access to gh-cli and The User has git ssh/gpg key permissions on both the repos(Existing ADO repo and new GitHub repo)
+# Migration of Repositories from ADO to GitHub Enterprises
 
-## 1. Bare Migration of Files from ADO-repo to GH-repo
-
-- Firstly create a repo on github without a readme
-- Then execute the following script [code_migration.py](./code_migration.py) as so
-
+## Code Migration
+- CREATE A NEW REPO ON GITHUB 
+eg.
 ```bash
-python code_migration.py <ADO_REPO_URL> <GH_REPO_URL>
+git clone --mirror git@ssh.dev.azure.com:v3/ivanjmadathil/django-admin-jwt-test/django-admin-jwt-test
+```
+- cd into the mirror
+- Push the mirror to the new GitHub repo
+eg.
+```bash
+git push --mirror git@github.com:<your-org>/<your-repo>.git
 ```
 
-- What this code does :
-  - Parses two command-line arguments:
-    - <ADO_REPO_URL>: the Azure DevOps repository URL
-    - <GH_REPO_URL>: the GitHub repository URL
-  - Extracts the repository name from the Azure URL and appends .git to prepare for mirroring
-  - Clones the Azure DevOps repo/ This creates a bare clone, copying all branches, tags, and refs.
-  - Changes into the cloned repo directory
-  - Pushes the mirrored repository to GitHub. This replicates all history, branches, and tags to GitHub. Errors are ignored to allow partial pushes if necessary.
-  - Extracts the owner/repo from the GitHub URL using regex
-  - Sets the default branch to main on GitHub. This step uses GitHub CLI and is optional — the script continues even if it fails
 
-## 2. Migrating The PR's from ADO to GH
-
-- Execute the following script [prmigrate.py](./prmigrate.py) as so
-
+### A python script for the step above
 ```bash
-python prmigrate.py --ado-org <org_name> --ado-project <project_name> --ado-repo <ado_repo_name> --github-repo <user/repo_name>  --ado-pat <ADO_PAT_HERE>
+##python.exe .\01_code_migration.py <AZURE_REPO> <GITHUB_REPO>
+import argparse
+import os
+import re
+import subprocess
+
+def run(cmd, ignore_error=False):
+    print(f"Running: {cmd}")
+    try:
+        subprocess.check_call(cmd, shell=True)
+    except subprocess.CalledProcessError as e:
+        if not ignore_error:
+            raise
+        print(f"Warning: Command failed but continuing. Error: {e}")
+
+def main():
+    parser = argparse.ArgumentParser(description="Migrate Azure DevOps repo to GitHub.")
+    parser.add_argument("azure_repo_url", help="Azure DevOps repository URL")
+    parser.add_argument("github_repo_url", help="GitHub repository URL")
+    args = parser.parse_args()
+
+    repo_name = args.azure_repo_url.rstrip('/').split('/')[-1] + ".git"
+
+    # Clone the Azure DevOps repo as a bare mirror
+    run(f'git clone --mirror "{args.azure_repo_url}"')
+
+    # Change directory to the cloned repo
+    os.chdir(repo_name)
+
+    # Push the mirror to the new GitHub repo, ignore errors
+    run(f'git push --mirror "{args.github_repo_url}"', ignore_error=True)
+
+    # Set the default branch to 'main' on GitHub using GitHub CLI
+    # Extract owner/repo from the GitHub URL
+    m = re.search(r'github\.com[:/](.+?)/(.+?)\.git', args.github_repo_url)
+    if m:
+        owner_repo = f"{m.group(1)}/{m.group(2)}"
+        run(f'gh repo edit {owner_repo} --default-branch main', ignore_error=True)
+    else:
+        print("Could not parse GitHub repo owner/name from URL.")
+
+if __name__ == "__main__":
+    main()
 ```
 
-or by using powershell env vars
+## Pull Request Migration
 
+### A python script for the PR migration
 ```bash
-export ADO_PAT=MY_ADO_PAT
-python migrate_prs.py --ado-org myorg --ado-project myproject --ado-repo myrepo --github-repo myuser/mygithubrepo
+# python.exe .\prmigrate.py --ado-pat <ADO_PAT_HERE> --ado-org <ADO_ORG_HERE> --ado-project <ADO_PROJECT_HERE> --ado-repo <ADO_REPO_HERE> --github-repo <Github_User/Github_Repo>
+
+import argparse
+import base64
+import json
+import os
+import subprocess
+from datetime import datetime
+
+import requests
+
+# === ARGUMENT PARSING ===
+parser = argparse.ArgumentParser(description="Migrate PRs from Azure DevOps to GitHub.")
+parser.add_argument("--ado-pat", help="Azure DevOps PAT (or set ADO_PAT env var)")
+parser.add_argument("--ado-org", required=True, help="Azure DevOps organization name")
+parser.add_argument("--ado-project", required=True, help="Azure DevOps project name")
+parser.add_argument("--ado-repo", required=True, help="Azure DevOps repo ID or name")
+parser.add_argument("--github-repo", required=True, help="GitHub repo (e.g., user/repo)")
+
+args = parser.parse_args()
+
+# === CREDENTIALS AND HEADERS ===
+ado_pat = args.ado_pat or os.environ.get("ADO_PAT")
+if not ado_pat:
+    raise ValueError("Azure DevOps PAT must be provided via --ado-pat or ADO_PAT env var.")
+
+headers = {
+    "Authorization": f"Basic {base64.b64encode(f':{ado_pat}'.encode()).decode()}"
+}
+
+# === VARIABLES ===
+ado_org = args.ado_org
+ado_project = args.ado_project
+ado_repo_id = args.ado_repo
+github_repo = args.github_repo
+
+# === LOGGING ===
+log_file = open("migration_errors.log", "w")
+
+def log_error(message):
+    print("❌", message)
+    log_file.write(message + "\n")
+
+def fetch_existing_github_prs():
+    print("🔍 Fetching existing GitHub PRs to avoid duplicates...")
+    result = subprocess.run(["gh", "pr", "list", "--repo", github_repo, "--json", "title,headRefName,baseRefName"],
+                            capture_output=True, text=True)
+    if result.returncode != 0:
+        log_error("Failed to fetch GitHub PRs.")
+        return []
+
+    try:
+        return json.loads(result.stdout)
+    except Exception as e:
+        log_error(f"Failed to parse PR list: {e}")
+        return []
+
+existing_prs = fetch_existing_github_prs()
+
+def pr_already_exists(title, head, base):
+    return any(
+        pr["title"] == title and pr["headRefName"] == head and pr["baseRefName"] == base
+        for pr in existing_prs
+    )
+
+# === FETCH PULL REQUESTS FROM ADO ===
+ado_pr_api = f"https://dev.azure.com/{ado_org}/{ado_project}/_apis/git/repositories/{ado_repo_id}/pullrequests?api-version=7.0"
+pr_response = requests.get(ado_pr_api, headers=headers)
+if pr_response.status_code != 200:
+    log_error(f"Failed to fetch PRs: {pr_response.status_code} - {pr_response.text}")
+    exit(1)
+
+prs = pr_response.json()["value"]
+
+# === MAIN MIGRATION LOOP ===
+for pr in prs:
+    title = pr["title"]
+    raw_description = pr["description"] or ""
+    source_branch = pr["sourceRefName"].replace("refs/heads/", "")
+    target_branch = pr["targetRefName"].replace("refs/heads/", "")
+    created_by = pr["createdBy"]["displayName"]
+    created_at_str = pr["creationDate"].split(".")[0] + "Z"
+    created_on = datetime.strptime(created_at_str, "%Y-%m-%dT%H:%M:%S%z").strftime("%Y-%m-%d")
+
+    if pr_already_exists(title, source_branch, target_branch):
+        print(f"⏩ Skipping existing PR: {title}")
+        continue
+
+    attribution = f"_Originally created by **{created_by}** on {created_on} in Azure DevOps_\n\n"
+    body = attribution + raw_description
+
+    print(f"\n📦 Creating PR: {title}")
+    try:
+        result = subprocess.run([
+            "gh", "pr", "create",
+            "--repo", github_repo,
+            "--title", title,
+            "--body", body,
+            "--head", source_branch,
+            "--base", target_branch
+        ], capture_output=True, text=True, check=True)
+
+        pr_url = result.stdout.strip().splitlines()[-1]  # Get last line = PR URL
+
+    except subprocess.CalledProcessError as e:
+        log_error(f"Failed to create PR '{title}': {e}")
+        continue
+
+    # === FETCH AND MIGRATE COMMENTS ===
+    pr_id = pr["pullRequestId"]
+    comments_url = f"https://dev.azure.com/{ado_org}/{ado_project}/_apis/git/repositories/{ado_repo_id}/pullRequests/{pr_id}/threads?api-version=7.0"
+    thread_response = requests.get(comments_url, headers=headers)
+
+    if thread_response.status_code != 200:
+        log_error(f"Failed to fetch comments for PR {title}: {thread_response.text}")
+        continue
+
+    threads = thread_response.json()["value"]
+    for thread in threads:
+        for comment in thread.get("comments", []):
+            author = comment["author"]["displayName"]
+            content = comment["content"]
+            date = datetime.strptime(comment["publishedDate"], "%Y-%m-%dT%H:%M:%S.%fZ").strftime("%Y-%m-%d")
+
+            comment_text = f"_Comment by **{author}** on {date}_:\n\n{content}"
+            try:
+                subprocess.run([
+                    "gh", "pr", "comment",
+                    pr_url,
+                    "--repo", github_repo,
+                    "--body", comment_text
+                ], check=True)
+            except subprocess.CalledProcessError as e:
+                log_error(f"Failed to post comment from {author} on PR '{title}': {e}")
+
+log_file.close()
+print("\n✅ Migration complete. Check 'migration_errors.log' for any issues.")
 ```
 
-- What the script does :
-  - Connect to Azure DevOps using the PAT (Personal Access Token) to authenticate via REST API.
-  - Hits the endpoint: https://dev.azure.com/{org}/{project}/_apis/git/repositories/{repoId}/pullrequests
-  - Fetch PR Metadata : Title, Description, Source branch, Target Branch
-  - Use gh-cli to create pr(gh pr create --title "..." --body "..." --head source --base target)
-  - Recreates the PR structure on GitHub, assuming branches already exist and are pushed.
-- What the script does notdo/migrate:
-  -PR Comments(not git objects and live in ADO’s PR discussion system which has no equivalent for gh pr create)
-  -Review History(GH has no api endpoint allowing importing of review events outside of GH)
-  -GH reviews and approvals(security reasons)
-  -Attachments (are usually blobs hosted by ado and linked to prs or comments. GH does not support uploading attachments via PR API)
 
-## 3. Migrating ADO pipelines to GH action pipelines
 
-- Hasnt been automated yet but for now
-- Either :
-  - Refer to the following github project: [ADO-Pipeline-Yml-To-Github-Actions-Yml](https://github.com/rdx40/ADO-Pipeline-Yml-To-Github-Actions-Yml.git) A WebAPI that takes a ado pipeline as input and returns a github actions yaml as output
-- OR Use the original project it was based on :
-  - https://pipelinestoactions.azurewebsites.net/
 
-## 4. Migrating Work Items(Issues, Tasks, Bugs)
 
-- Although there does exist a powershell script for the same objective [This one](https://github.com/joshjohanning/ado_workitems_to_github_issues)
-- Personally Using a python script for such tasks has always been my go to. So you could execute the following script [migrate_workitems.py](./migrate_workitems.py) as so
+## Work Item ( Issue) Migration
 
 ```bash
-python migrate_workitems.py --ado-org <ORG_NAME> --ado-project <PROJECT_NAME> --github-repo <user/repo_name> --ado-pat <ADO_PAT_HERE> --github-token <GH_TOKEN_HERE>
+#python.exe .\migrate_workitems.py --ado-pat <ADO_PAT_HERE> --ado-org <ADO_ORG_HERE> --ado-project <ADO_PROJECT_HERE> --github-repo <Github_USER/Github_REPO> --github-token <GH_PAT_HERE>
+import argparse
+import base64
+import json
+import os
+from datetime import datetime
+
+import requests
+
+# === ARG PARSING ===
+parser = argparse.ArgumentParser(description="Migrate Azure DevOps work items to GitHub Issues.")
+parser.add_argument("--ado-pat", help="Azure DevOps PAT (or set ADO_PAT env var)")
+parser.add_argument("--ado-org", required=True, help="Azure DevOps organization")
+parser.add_argument("--ado-project", required=True, help="Azure DevOps project")
+parser.add_argument("--github-repo", required=True, help="GitHub repo (e.g., user/repo)")
+parser.add_argument("--github-token", help="GitHub token (or set GITHUB_TOKEN env var)")
+parser.add_argument("--limit", type=int, default=50, help="Limit number of work items to migrate")
+args = parser.parse_args()
+
+# === AUTH HEADERS ===
+ado_pat = args.ado_pat or os.getenv("ADO_PAT")
+if not ado_pat:
+    raise ValueError("Azure DevOps PAT must be provided via --ado-pat or ADO_PAT env var.")
+github_token = args.github_token or os.getenv("GITHUB_TOKEN")
+if not github_token:
+    raise ValueError("GitHub token must be provided via --github-token or GITHUB_TOKEN env var.")
+
+headers_ado = {
+    "Authorization": f"Basic {base64.b64encode(f':{ado_pat}'.encode()).decode()}",
+    "Content-Type": "application/json"
+}
+headers_gh = {
+    "Authorization": f"Bearer {github_token}",
+    "Accept": "application/vnd.github+json"
+}
+
+# === LOGGING ===
+log_file = open("migration_errors.log", "w")
+def log_error(msg):
+    print("❌", msg)
+    log_file.write(msg + "\n")
+
+# === FETCH WORK ITEM IDS ===
+print("📦 Fetching work items...")
+wiql_url = f"https://dev.azure.com/{args.ado_org}/{args.ado_project}/_apis/wit/wiql?api-version=7.0"
+query = {
+    "query": "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project ORDER BY [System.CreatedDate] ASC"
+}
+resp = requests.post(wiql_url, headers=headers_ado, json=query)
+resp.raise_for_status()
+
+ids = [item["id"] for item in resp.json()["workItems"]][:args.limit]
+
+# === FETCH EXISTING GITHUB ISSUES ===
+print("🔍 Fetching GitHub issues to avoid duplicates...")
+existing_titles = set()
+page = 1
+while True:
+    url = f"https://api.github.com/repos/{args.github_repo}/issues?state=all&per_page=100&page={page}"
+    resp = requests.get(url, headers=headers_gh)
+    if resp.status_code != 200 or not resp.json():
+        break
+    existing_titles.update(issue["title"] for issue in resp.json())
+    page += 1
+
+# === MIGRATION LOOP ===
+for wi_id in ids:
+    try:
+        # Get work item details
+        url = f"https://dev.azure.com/{args.ado_org}/{args.ado_project}/_apis/wit/workitems/{wi_id}?$expand=all&api-version=7.0-preview"
+        wi = requests.get(url, headers=headers_ado).json()
+        title = wi["fields"]["System.Title"]
+        if title in existing_titles:
+            print(f"⏩ Skipping existing issue: {title}")
+            continue
+
+        desc = wi["fields"].get("System.Description", "")
+        created_by = wi["fields"]["System.CreatedBy"]["displayName"]
+        created_date = wi["fields"]["System.CreatedDate"].split("T")[0]
+        work_item_url = wi["_links"]["html"]["href"]
+        body = f"""**Created by:** {created_by}  
+**Created on:** {created_date}  
+**Original ADO Link:** [{work_item_url}]({work_item_url})
+
+---
+
+{desc}
+"""
+
+        # Create GitHub issue
+        payload = {
+            "title": title,
+            "body": body,
+            "labels": [wi["fields"].get("System.WorkItemType", "work-item")]
+        }
+        gh_issue = requests.post(f"https://api.github.com/repos/{args.github_repo}/issues",
+                                 headers=headers_gh, json=payload)
+        gh_issue.raise_for_status()
+        issue_number = gh_issue.json()["number"]
+        print(f"✅ Created GitHub issue #{issue_number}: {title}")
+
+        # Fetch and migrate comments
+        comments_url = f"https://dev.azure.com/{args.ado_org}/{args.ado_project}/_apis/wit/workItems/{wi_id}/comments?api-version=7.0-preview"
+        comment_resp = requests.get(comments_url, headers=headers_ado)
+        comment_resp.raise_for_status()
+        for comment in comment_resp.json().get("comments", []):
+            author = comment["createdBy"]["displayName"]
+            text = comment["text"]
+            date = comment["createdDate"].split("T")[0]
+            comment_body = f"_Comment by **{author}** on {date}_:\n\n{text}"
+            requests.post(f"https://api.github.com/repos/{args.github_repo}/issues/{issue_number}/comments",
+                          headers=headers_gh, json={"body": comment_body})
+    except Exception as e:
+        log_error(f"Work item {wi_id} failed: {str(e)}")
+
+log_file.close()
+print("\n🎉 Migration complete.")
 ```
-
-## 5. To Follow Security Practises
-
-- Please do refer to [Security_Practises.txt](./Security_Practises.txt)
