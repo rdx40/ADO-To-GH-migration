@@ -73,7 +73,7 @@ if __name__ == "__main__":
 ### **_NOTE_** :
 
 - It is best practise that Pull Requests are Merged before the repositories are migrated
-- But in the scenario where it is required that the Pull Requests are migrated, the below provided code can be made use of.
+- But in the scenario where it is required that the Pull Requests are migrated, the below provided script can be made use of.
 
 ### A python script for the PR migration
 
@@ -219,7 +219,7 @@ log_file.close()
 print("\n✅ Migration complete. Check 'migration_errors.log' for any issues.")
 ```
 
-## Work Item ( Issue) Migration
+## Work Item (Issue) Migration
 
 [The script](./03_migrate_workitems.py)
 
