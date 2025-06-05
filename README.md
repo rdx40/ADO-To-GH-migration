@@ -1,5 +1,7 @@
 # Migration of Repositories from ADO to GitHub Enterprises
 
+## Below has been attached three different ways by which repositories can be migrated from Azure DevOps to Github
+
 ### Prerequisites :
 
 - Azure DevOps Personal Access Token - Organization Page -> Settings -> Personal Access Tokens -> Token Classic with necessary permissions
@@ -440,6 +442,6 @@ gh ado2gh migrate-repo --ado-org SOURCE --ado-team-project TEAM-PROJECT --ado-re
 - Select your repository to be private
 - Begin Import
 
-### Issue with this method is pull request and issues are not migrated . In the case where it is required that these are included in the repo, the following scripts can be used. [Pull Request Migration](./02_prmigrate.py) and [Isse Migrate](./03_migrate_workitems.py)
+### Issue with this method is pull request and issues are not migrated . In the case where it is required that these are included in the repo, the following scripts can be used. [Pull Request Migration](./02_prmigrate.py) and [Issue Migration](./03_migrate_workitems.py)
 
 ![The GUI](./images/image.png)
