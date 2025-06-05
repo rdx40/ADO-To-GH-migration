@@ -467,4 +467,47 @@ git push origin <new-branch-name>
  ##and repeat this for each branch
 ```
 
+---
+
 ### II) The Azure Valut to GitHub repository secrets must be done manually and with discretion
+
+---
+
+### III) Now if the development is carried out in GitHub and the required changes have to be synced with azure devops, in that case we can make use of a GitHub actions pipeline that mirrors its current state to the ADO repository.
+
+#### github actions.yml
+
+```bash
+# .github/workflows/sync-to-ado.yml
+
+name: Mirror to Azure DevOps
+
+on:
+push:
+branches: [ main, develop, feature/** ]
+tags: - '\*\*'
+
+jobs:
+mirror:
+runs-on: ubuntu-latest
+steps: - name: Checkout
+uses: actions/checkout@v4
+with:
+fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "OrgBorgCorg"
+          git config --global user.email "ivanjaison@gmail.com"
+
+      - name: Add ADO Remote
+        run: |
+          git remote add ado https://:${{ secrets.ADO_PAT }}@dev.azure.com/ivanjmadathil/django-admin-jwt-test/_git/ShellScripts || \
+          git remote set-url ado https://:${{ secrets.ADO_PAT }}@dev.azure.com/ivanjmadathil/django-admin-jwt-test/_git/ShellScripts
+
+      - name: Push to ADO
+        run: |
+          git push ado --all --force
+          git push ado --tags --force
+
+```
