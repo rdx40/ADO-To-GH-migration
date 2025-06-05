@@ -1,11 +1,11 @@
 # Migration of Repositories from ADO to GitHub Enterprises
 
-## Below has been attached three different ways by which repositories can be migrated from Azure DevOps to Github
+## Below has been attached three different ways by which repositories can be migrated from Azure DevOps to Github:
 
 ### Prerequisites :
 
-- Azure DevOps Personal Access Token - Organization Page -> Settings -> Personal Access Tokens -> Token Classic with necessary permissions
-- Github PAT - Your Account Logo(in upper right) -> Your Organizations -> Settings -> Developer Settings -> PAT Creation
+- Azure DevOps Personal Access Token - Organization Page -> Settings -> Personal Access Tokens -> Token Classic with necessary permissions.
+- Github PAT - Your Account Logo(in upper right) -> Your Organizations -> Settings -> Developer Settings -> PAT Creation.
 
 # **Method I: Making Use of Python Scripts**
 
@@ -445,3 +445,26 @@ gh ado2gh migrate-repo --ado-org SOURCE --ado-team-project TEAM-PROJECT --ado-re
 ### Issue with this method is pull request and issues are not migrated . In the case where it is required that these are included in the repo, the following scripts can be used. [Pull Request Migration](./02_prmigrate.py) and [Issue Migration](./03_migrate_workitems.py)
 
 ![The GUI](./images/image.png)
+
+## Miscallaneous Points:
+
+### I) In the scenario where commit history can be ignored and only branches are required to be migrated the steps above can be altered in such a way
+
+```bash
+#create a new github repo
+
+#create a bare clone of the ado repo
+git clone --bare <ADO_REPO_URL>
+
+#for each branch that has to be migrated
+git checkout <branch-name>
+
+#then
+git checkout --orphan <new-branch-name>
+git rm -rf .
+
+git push origin <new-branch-name>
+ ##and repeat this for each branch
+```
+
+### II) The Azure Valut to GitHub repository secrets must be done manually and with discretion
