@@ -20,6 +20,8 @@ git push --mirror git@github.com:<your-org>/<your-repo>.git
 
 ### A python script for the step above
 
+[The Script](./01_code_migration.py)
+
 ```bash
 ##python.exe .\01_code_migration.py <AZURE_REPO> <GITHUB_REPO>
 import argparse
@@ -66,17 +68,16 @@ if __name__ == "__main__":
     main()
 ```
 
-
-
 ## Pull Request Migration
 
-### ***NOTE*** :
+### **_NOTE_** :
 
 - It is best practise that Pull Requests are Merged before the repositories are migrated
 - But in the scenario where it is required that the Pull Requests are migrated, the below provided code can be made use of.
 
-
 ### A python script for the PR migration
+
+[The Script](./02_code_migration)
 
 ```bash
 # python.exe .\prmigrate.py --ado-pat <ADO_PAT_HERE> --ado-org <ADO_ORG_HERE> --ado-project <ADO_PROJECT_HERE> --ado-repo <ADO_REPO_HERE> --github-repo <Github_User/Github_Repo>
@@ -220,6 +221,8 @@ print("\n✅ Migration complete. Check 'migration_errors.log' for any issues.")
 
 ## Work Item ( Issue) Migration
 
+[The script](./03_migrate_workitems.py)
+
 ```bash
 #python.exe .\migrate_workitems.py --ado-pat <ADO_PAT_HERE> --ado-org <ADO_ORG_HERE> --ado-project <ADO_PROJECT_HERE> --github-repo <Github_USER/Github_REPO> --github-token <GH_PAT_HERE>
 import argparse
@@ -359,6 +362,4 @@ print("\n🎉 Migration complete.")
 
 ## Wikis
 
-- Would have to be migrated manually
-
-## Azure Artifacts to GitHub Packages
+- Has to be migrated manually
