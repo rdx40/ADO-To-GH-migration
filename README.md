@@ -1,5 +1,12 @@
 # Migration of Repositories from ADO to GitHub Enterprises
 
+### Prerequisites :
+
+- Azure DevOps Personal Access Token - Organization Page -> Settings -> Personal Access Tokens -> Token Classic with necessary permissions
+- Github PAT - Your Account Logo(in upper right) -> Your Organizations -> Settings -> Developer Settings -> PAT Creation
+
+# **Method I: Making Use of Python Scripts**
+
 ## Code Migration
 
 - CREATE A NEW REPO ON GITHUB
@@ -363,3 +370,76 @@ print("\n🎉 Migration complete.")
 ## Wikis
 
 - Has to be migrated manually
+
+# **Method II: Making Use of gh-cli**
+
+## II.0) Install gh-cli
+
+[Link to the installation Guide](https://cli.github.com/). Install the .msi file. Run it and proceed with the installation and signin
+
+## II.1) Install ado2gh extension
+
+```bash
+gh extension install github/gh-ado2gh
+```
+
+## II.2) Update and Upgrade the extension
+
+```bash
+gh extension upgrade github/gh-ado2gh
+```
+
+## II.3) Set the environment variables
+
+If you are using Powershell (**Recommended**)
+
+```bash
+$env:GH_PAT="TOKEN"
+$env:ADO_PAT="TOKEN"
+```
+
+## II.4) Generate a migration script
+
+```bash
+gh ado2gh generate-script --ado-org SOURCE --github-org DESTINATION --output FILENAME
+```
+
+| Placeholder | Value                            |
+| ----------- | -------------------------------- |
+| DESTINATION | Name of Destination Organization |
+| FILENAME    | Name of the Script               |
+| SOURCE      | Name of Source Organization      |
+
+## II.5) Reviewing the script
+
+- If there are any repositories you don't want to migrate, delete or comment out the corresponding lines.
+- If you want any repositories to have a different name in the destination organization, update the value for the corresponding --target-repo flag.
+- If you want to change the visibility of new repository, update the value for the corresponding --target-repo-visibility flag. By default, the script sets the same visibility as the source repository.
+
+## II.6) Migrate the repos
+
+```bash
+.\FILENAME
+```
+
+## If you wish to migrate a single repo
+
+```bash
+gh ado2gh migrate-repo --ado-org SOURCE --ado-team-project TEAM-PROJECT --ado-repo CURRENT-NAME --github-org DESTINATION --github-repo NEW-NAME
+```
+
+## Issue faced issues - The ado2gh extension does not facilitate the migration of issues of a repository. In the case that migration of issues is essential the attached script could be made use of [The Script](./03_migrate_workitems.py)
+
+# **Method III: Making Use of the GUI**
+
+- Go to create a repository
+- Click on Import a repository on the top of the page
+- Provide the url of the source repository
+- Provide the username or registered email id and the ADO PAT
+- Select Your Organization as the owner and give it the name
+- Select your repository to be private
+- Begin Import
+
+### Issue with this method is pull request and issues are not migrated . In the case where it is required that these are included in the repo, the following scripts can be used. [Pull Request Migration](./02_prmigrate.py) and [Isse Migrate](./03_migrate_workitems.py)
+
+![The GUI](./images/image.png)
