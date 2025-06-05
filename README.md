@@ -1,21 +1,25 @@
 # Migration of Repositories from ADO to GitHub Enterprises
 
 ## Code Migration
+
 - CREATE A NEW REPO ON GITHUB
 - Set up a bare mirror clone of ado repository
-eg.
+  eg.
+
 ```bash
 git clone --mirror git@ssh.dev.azure.com:v3/ivanjmadathil/django-admin-jwt-test/django-admin-jwt-test
 ```
+
 - cd into the mirror
 - Push the mirror to the new GitHub repo
-eg.
+  eg.
+
 ```bash
 git push --mirror git@github.com:<your-org>/<your-repo>.git
 ```
 
-
 ### A python script for the step above
+
 ```bash
 ##python.exe .\01_code_migration.py <AZURE_REPO> <GITHUB_REPO>
 import argparse
@@ -62,9 +66,18 @@ if __name__ == "__main__":
     main()
 ```
 
+
+
 ## Pull Request Migration
 
+### ***NOTE*** :
+
+- It is best practise that Pull Requests are Merged before the repositories are migrated
+- But in the scenario where it is required that the Pull Requests are migrated, the below provided code can be made use of.
+
+
 ### A python script for the PR migration
+
 ```bash
 # python.exe .\prmigrate.py --ado-pat <ADO_PAT_HERE> --ado-org <ADO_ORG_HERE> --ado-project <ADO_PROJECT_HERE> --ado-repo <ADO_REPO_HERE> --github-repo <Github_User/Github_Repo>
 
@@ -205,10 +218,6 @@ log_file.close()
 print("\n✅ Migration complete. Check 'migration_errors.log' for any issues.")
 ```
 
-
-
-
-
 ## Work Item ( Issue) Migration
 
 ```bash
@@ -292,8 +301,8 @@ for wi_id in ids:
         created_by = wi["fields"]["System.CreatedBy"]["displayName"]
         created_date = wi["fields"]["System.CreatedDate"].split("T")[0]
         work_item_url = wi["_links"]["html"]["href"]
-        body = f"""**Created by:** {created_by}  
-**Created on:** {created_date}  
+        body = f"""**Created by:** {created_by}
+**Created on:** {created_date}
 **Original ADO Link:** [{work_item_url}]({work_item_url})
 
 ---
@@ -332,6 +341,7 @@ print("\n🎉 Migration complete.")
 ```
 
 ## Branch Protection, Restriction Rules
+
 - These have to be done manually and based on the workflow of the repository
 - Enable branch protection to effectively prevent force pushing
 - Enable on any branch meant for ongoing collabration
@@ -340,15 +350,15 @@ print("\n🎉 Migration complete.")
 - Enable branch protection on main branch by turning on "Require status checks to pass before merging" to avoid broken code.
 - Require at least one pull request review by checking the "Require pull request reviews before merging"
 
-
 ## Secrets and Pipelines
+
 - For the migration of secrets and pipelines from azure devops to github
 - Firstly, Secrets cannot be migrated and will have to be set in the repository settings in github.
 - Secondly, for the conversion of Azure pipelines yaml to github compliant yaml [The following website could be used](https://pipelinestoactions.azurewebsites.net/). Or its NuGet package could be utilized.
 - NOTE: For the pipeline conversion the tool only promises a 90% conversion accuracy at best. So a pipeline review would be required.
 
 ## Wikis
+
 - Would have to be migrated manually
 
 ## Azure Artifacts to GitHub Packages
-
