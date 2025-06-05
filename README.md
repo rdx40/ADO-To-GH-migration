@@ -4,8 +4,10 @@
 
 ### Prerequisites :
 
-- Azure DevOps Personal Access Token - Organization Page -> Settings -> Personal Access Tokens -> Token Classic with necessary permissions.
-- Github PAT - Your Account Logo(in upper right) -> Your Organizations -> Settings -> Developer Settings -> PAT Creation.
+- Github PAT - Organization Page -> Settings -> Personal Access Tokens -> Token Classic with necessary permissions.
+- Azure DevOps Personal Access Token -> Your Account Logo(in upper right) -> Your Organizations -> Settings -> Developer Settings -> PAT Creation.
+
+### For the sake of ease of use the Personal Access Tokens can be stored as environment variables in the system
 
 # **Method I: Making Use of Python Scripts**
 
@@ -396,14 +398,15 @@ gh extension upgrade github/gh-ado2gh
 If you are using Powershell (**Recommended**)
 
 ```bash
-$env:GH_PAT="TOKEN"
-$env:ADO_PAT="TOKEN"
+$env:GH_PAT=GH_PAT
+$env:ADO_PAT=ADO_PAT
+//this is assuming that the PATs have been saved as environment variables
 ```
 
 ## II.4) Generate a migration script
 
 ```bash
-gh ado2gh generate-script --ado-org SOURCE --github-org DESTINATION --output FILENAME
+gh ado2gh generate-script --ado-org <SOURCE_TO_BE_ENTERED> --github-org <DESTINATION_TO_BE_ENTERED> --output <FILENAME_TO_BE_ENTERED>
 ```
 
 | Placeholder | Value                            |
@@ -479,35 +482,48 @@ git push origin <new-branch-name>
 
 ```bash
 # .github/workflows/sync-to-ado.yml
-
+//name of the github action workflow
 name: Mirror to Azure DevOps
 
+//event triggering the workflow
 on:
-push:
-branches: [ main, develop, feature/** ]
-tags: - '\*\*'
+    push:
+    //sppecifies the branches triggering the workflow
+    branches: [ main, develop, feature/** ]
+    //all tags that are pushed
+    tags: - '\*\*'
 
+//tasks to be exec in the workflow
 jobs:
-mirror:
-runs-on: ubuntu-latest
-steps: - name: Checkout
-uses: actions/checkout@v4
-with:
-fetch-depth: 0
+    //name of the jib
+    mirror:
+        //environment where the job will run
+        runs-on: ubuntu-latest
+//individual steps within the job
+steps:
+    //names the step
+  - name: Checkout
+    //uses the actions/checkout GitHub actions to clone the repo
+    uses: actions/checkout@v4
+    with:
+        //esnures entire git history is fetched not just the latest commit
+        fetch-depth: 0
+  - name: Configure Git
+    run: |
+     git config --global user.name "OrgBorgCorg"
+     git config --global user.email "ivanjaison@gmail.com"
 
-      - name: Configure Git
-        run: |
-          git config --global user.name "OrgBorgCorg"
-          git config --global user.email "ivanjaison@gmail.com"
-
-      - name: Add ADO Remote
-        run: |
-          git remote add ado https://:${{ secrets.ADO_PAT }}@dev.azure.com/ivanjmadathil/django-admin-jwt-test/_git/ShellScripts || \
-          git remote set-url ado https://:${{ secrets.ADO_PAT }}@dev.azure.com/ivanjmadathil/django-admin-jwt-test/_git/ShellScripts
+  - name: Add ADO Remote
+    run: |
+     //add a remote named ado pointing to ado repo. the ado_pat is used for authentication
+     git remote add ado https://:${{ secrets.ADO_PAT }}@dev.azure.com/ivanjmadathil/django-admin-jwt-test/_git/ShellScripts || \
+     git remote set-url ado https://:${{ secrets.ADO_PAT }}@dev.azure.com/ivanjmadathil/django-admin-jwt-test/_git/ShellScripts
 
       - name: Push to ADO
         run: |
+          //pushes all branches to ado remote, overwriting existing
           git push ado --all --force
+          //psuhes all tags to ado remote, overwriting existing
           git push ado --tags --force
 
 ```
