@@ -482,48 +482,82 @@ git push origin <new-branch-name>
 
 ```bash
 # .github/workflows/sync-to-ado.yml
-//name of the github action workflow
 name: Mirror to Azure DevOps
 
-//event triggering the workflow
 on:
-    push:
-    //sppecifies the branches triggering the workflow
-    branches: [ main, develop, feature/** ]
-    //all tags that are pushed
-    tags: - '\*\*'
+  push:
+    branches: [main, develop, feature/**]
+    tags:
+      - "**"
+  delete:
+    branches: [main, develop, feature/**]
+    tags:
+      - "**"
+  create:
+    branches: ['**']  # Catch branch creations
+  pull_request:
+    types: [opened, synchronize, reopened]
 
-//tasks to be exec in the workflow
+  workflow_dispatch:
+
 jobs:
-    //name of the jib
-    mirror:
-        //environment where the job will run
-        runs-on: ubuntu-latest
-//individual steps within the job
-steps:
-    //names the step
-  - name: Checkout
-    //uses the actions/checkout GitHub actions to clone the repo
-    uses: actions/checkout@v4
-    with:
-        //esnures entire git history is fetched not just the latest commit
-        fetch-depth: 0
-  - name: Configure Git
-    run: |
-     git config --global user.name "OrgBorgCorg"
-     git config --global user.email "ivanjaison@gmail.com"
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
-  - name: Add ADO Remote
-    run: |
-     //add a remote named ado pointing to ado repo. the ado_pat is used for authentication
-     git remote add ado https://:${{ secrets.ADO_PAT }}@dev.azure.com/ivanjmadathil/django-admin-jwt-test/_git/ShellScripts || \
-     git remote set-url ado https://:${{ secrets.ADO_PAT }}@dev.azure.com/ivanjmadathil/django-admin-jwt-test/_git/ShellScripts
-
-      - name: Push to ADO
+      - name: Configure Git
         run: |
-          //pushes all branches to ado remote, overwriting existing
-          git push ado --all --force
-          //psuhes all tags to ado remote, overwriting existing
-          git push ado --tags --force
+          git config --global user.name "OrgBorgCorg"
+          git config --global user.email "ivanjaison@gmail.com"
+
+      - name: Fetch and recreate all branches locally
+        run: |
+          git fetch origin "+refs/heads/*:refs/remotes/origin/*"
+          for branch in $(git branch -r | grep origin/ | grep -v '\->' | sed 's|origin/||'); do
+            git checkout -B "$branch" "origin/$branch"
+          done
+
+      - name: Add ADO Remote
+        run: |
+          git remote add ado https://:${{ secrets.ADO_PAT }}@dev.azure.com/ivanjmadathil/django-admin-jwt-test/_git/ShellScripts || \
+          git remote set-url ado https://:${{ secrets.ADO_PAT }}@dev.azure.com/ivanjmadathil/django-admin-jwt-test/_git/ShellScripts
+
+      - name: Get current GitHub branches
+        id: github-branches
+        run: |
+          echo "github_branches=$(git branch -r | grep origin/ | grep -v '\->' | sed 's|origin/||' | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
+
+      - name: Get current ADO branches
+        id: ado-branches
+        run: |
+          git fetch ado
+          echo "ado_branches=$(git ls-remote --heads ado | awk '{print $2}' | sed 's|refs/heads/||' | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
+
+      - name: Delete removed branches from ADO
+        run: |
+          # Convert JSON arrays to bash arrays
+          readarray -t github_branches <<< $(echo '${{ steps.github-branches.outputs.github_branches }}' | jq -r '.[]')
+          readarray -t ado_branches <<< $(echo '${{ steps.ado-branches.outputs.ado_branches }}' | jq -r '.[]')
+
+          # Find branches to delete
+          for branch in "${ado_branches[@]}"; do
+            if [[ ! " ${github_branches[@]} " =~ " ${branch} " ]]; then
+              echo "Deleting branch $branch from ADO"
+              git push ado --delete "$branch"
+            fi
+          done
+
+      - name: Push all branches to ADO
+        run: |
+          git push --verbose ado --all --force
+          git push --verbose ado --tags --force
+
+      - name: Show branches pushed to ADO (debug)
+        run: git ls-remote --heads ado
 
 ```
